@@ -120,7 +120,7 @@ int dp_tx_frame(const u8 *da, u16 ethertype, const u8 *payload, size_t len, bool
 	if (rc_fallback && time(NULL) >= rc_resume) rc_fallback = 0;
 	if (!control_port && g_opt_mcs >= 0 && g_opt_mcs <= 15 && !rc_fallback) {
 		info->control.rates[0].idx = g_opt_mcs;
-		info->control.rates[0].flags = IEEE80211_TX_RC_MCS | (g_opt_bw40 ? IEEE80211_TX_RC_40_MHZ_WIDTH : 0);
+		info->control.rates[0].flags = IEEE80211_TX_RC_MCS | (g_opt_bw40 && g_mlme.width >= NL80211_CHAN_WIDTH_40 ? IEEE80211_TX_RC_40_MHZ_WIDTH : 0)	/* 40 MHz frames only when the AP's BSS is 40 MHz wide: a 20 MHz AP (2.4 GHz) ignores them */;
 	}
 	/* A-MPDU off: with the BA session up, unicast data sent as A-MPDU never got a reply on rt2800 (DHCP before the session did) */
 	opt_init();
