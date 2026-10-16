@@ -5,3 +5,4 @@ installer/build/
 menubar/build/
 port/build/
 port/rt2800d
+rt2x00/rt2870.bin

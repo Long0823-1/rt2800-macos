@@ -3,6 +3,7 @@
 set -e
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 [ "$(id -u)" = 0 ] || { echo "run with sudo"; exit 1; }
+[ -f "$HERE/rt2x00/rt2870.bin" ] || sudo -u "${SUDO_USER:-root}" "$HERE/scripts/fetch-firmware.sh"
 install -d /usr/local/libexec/rt2800 /usr/local/share/rt2800 /var/db/rt2800d /usr/local/bin
 install -m 755 "$HERE/port/rt2800d" /usr/local/libexec/rt2800/rt2800d
 install -m 644 "$HERE/rt2x00/rt2870.bin" /usr/local/share/rt2800/
