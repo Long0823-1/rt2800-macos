@@ -182,7 +182,7 @@ static void cmd_status(FILE *f)
 	char ssid[33], err[96];
 	snprintf(ssid, sizeof ssid, "%s", D.cur_ssid);
 	snprintf(err, sizeof err, "%s", D.err);
-	bool route = D.route_default;
+	bool route = D.route_default, autoc = D.autoconnect;
 	time_t since = D.connected_at;
 	pthread_mutex_unlock(&D.lock);
 	if (st == D_CONNECTED) { net_get_ip(ip, sizeof ip); mlme_cur_info(bssid, sizeof bssid, &chan, &sig); }
@@ -194,6 +194,7 @@ static void cmd_status(FILE *f)
 	fprintf(f, ",\"rx_rate\":\"%s\",\"width\":%u", rr, g_mlme.width == NL80211_CHAN_WIDTH_80 ? 80 : g_mlme.width == NL80211_CHAN_WIDTH_40 ? 40 : 20);
 	fprintf(f, ",\"sys\":%d,\"dstart\":%ld", D.sys_assoc ? 1 : 0, (long)(time(NULL) - g_daemon_start));
 	fprintf(f, ",\"rx_frames\":%lu,\"rx_data\":%lu,\"rx_bytes\":%lu,\"rx_undecrypted\":%lu,\"rx_undec_group\":%lu,\"rx_undec_uni\":%lu,\"utun_wr_err\":%lu,\"rx_retry\":%lu,\"rx_dup\":%lu,\"rx_amsdu\":%lu,\"rx_ooo\":%lu", st_rx_frames, st_rx_data, st_rx_bytes, st_rx_undecrypted, st_rx_undec_group, st_rx_undec_uni, net_wr_err, st_rx_retry, st_rx_dup, st_rx_amsdu, st_rx_ooo);
+	fprintf(f, ",\"autoconnect\":%s", autoc ? "true" : "false");
 	fprintf(f, ",\"known\":[");
 	for (int i = 0; i < nknown; i++) { if (i) fputc(',', f); json_str(f, known[i].ssid); }
 	fprintf(f, "]}\n");

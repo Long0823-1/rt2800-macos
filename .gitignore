@@ -2,3 +2,4 @@ port/build/
 port/rt2800d
 *.o
 *.d
+menubar/build/
