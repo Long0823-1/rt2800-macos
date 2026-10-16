@@ -9,9 +9,15 @@ hex() { printf %s "$1" | xxd -p | tr -d '\n'; }
 UTUN=$(ifconfig | awk '/^utun[0-9]+:/{n=$1} /inet 192.168.0.2/{print n}' | tr -d ':')
 status_state() { ctl status | sed -n 's/.*"state":"\([a-z]*\)".*/\1/p'; }
 reconnect() {
-  ctl disconnect >/dev/null; sleep 2; ctl use "$(hex "$SSID")" >/dev/null
-  for i in $(seq 1 40); do sleep 1; [ "$(status_state)" = connected ] && break; done
-  sleep 6
+  ctl disconnect >/dev/null; sleep 8
+  ctl use "$(hex "$SSID")" >/dev/null
+  # the AP needs a while after a quick leave/join: wait up to 90 s and ask again every 20 s
+  for i in $(seq 1 90); do
+    sleep 1
+    [ "$(status_state)" = connected ] && break
+    [ $((i % 20)) = 0 ] && ctl use "$(hex "$SSID")" >/dev/null
+  done
+  sleep 8
   UTUN=$(ifconfig | awk '/^utun[0-9]+:/{n=$1} /inet 192.168.0.2/{print n}' | tr -d ':')
 }
 IP=$(dig +short speed.cloudflare.com | head -1)
