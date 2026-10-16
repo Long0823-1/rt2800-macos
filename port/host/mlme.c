@@ -694,7 +694,7 @@ static void handle_data(struct sk_buff *skb)
 			if (plen < 8 + 8) return;
 			payload += 8; plen -= 8;
 		}
-		if (!(st->flag & RX_FLAG_MIC_STRIPPED)) {
+		if (!(st->flag & (RX_FLAG_MIC_STRIPPED | RX_FLAG_MMIC_STRIPPED))) {	/* rt2x00 reports the stripped CCMP MIC as MMIC_STRIPPED */
 			if (plen < 8) return;
 			plen -= 8;
 		}
