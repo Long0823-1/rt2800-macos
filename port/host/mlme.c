@@ -870,7 +870,7 @@ void mlme_set_authorized(void)
 	mlme_ba_reset();
 	g_mlme.connected = true;
 	fprintf(stderr, "[mlme] CONNECTED (authorized)\n");
-	if (getenv("RT_BA")) mlme_ba_start_tx(0);
+	{ extern int g_opt_ba; extern int dp_opt(int *); if (dp_opt(&g_opt_ba)) mlme_ba_start_tx(0); }
 }
 
 static int mlme_connect_once(const char *ssid, const char *psk);
@@ -1221,7 +1221,7 @@ static void handle_action(struct sk_buff *skb)
 		u16 maxbuf = g_mm->hw.max_rx_aggregation_subframes ? g_mm->hw.max_rx_aggregation_subframes : 64;
 		if (!buf || buf > maxbuf) buf = maxbuf;
 		/* hardware Block Ack replies are unreliable on this adapter: the AP kept retransmitting (3x duplicates), so refuse aggregation unless RT_BA is set */
-		if (tid > 7 || !getenv("RT_BA")) { send_addba_resp(m->u.action.addba_req.dialog_token, tid, buf, timeout, false, WLAN_STATUS_REQUEST_DECLINED); return; }
+		if (tid > 7 || !({ extern int g_opt_ba; extern int dp_opt(int *); dp_opt(&g_opt_ba); })) { send_addba_resp(m->u.action.addba_req.dialog_token, tid, buf, timeout, false, WLAN_STATUS_REQUEST_DECLINED); return; }
 		ampdu_op(IEEE80211_AMPDU_RX_START, tid, ssn, buf, timeout, amsdu);
 		send_addba_resp(m->u.action.addba_req.dialog_token, tid, buf, timeout, amsdu, 0);
 		fprintf(stderr, "[ba] RX aggregation started tid %u buf %u\n", tid, buf);

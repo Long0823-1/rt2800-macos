@@ -439,6 +439,16 @@ static void handle_cmd(char *line, FILE *out)
 		char *a = strtok_r(NULL, " \t\r\n", &save);
 		g_prefer_sae = a && !strcmp(a, "on");
 		fprintf(out, "ok (prefer SAE: %d)\n", g_prefer_sae);
+	} else if (!strcmp(cmd, "tune")) {
+		extern int g_opt_ba, g_opt_ampdu, g_opt_mcs, g_opt_bw40; extern int dp_opt(int *);
+		char *k = strtok_r(NULL, " \t\r\n", &save), *v = strtok_r(NULL, " \t\r\n", &save);
+		dp_opt(&g_opt_ba);
+		if (k && v && !strcmp(k, "ba")) g_opt_ba = atoi(v);
+		else if (k && v && !strcmp(k, "ampdu")) g_opt_ampdu = atoi(v);
+		else if (k && v && !strcmp(k, "mcs")) g_opt_mcs = atoi(v);
+		else if (k && v && !strcmp(k, "bw40")) g_opt_bw40 = atoi(v);
+		else if (k) { fprintf(out, "error usage: tune ba|ampdu|mcs|bw40 <value>\n"); return; }
+		fprintf(out, "ba %d ampdu %d mcs %d bw40 %d\n", g_opt_ba, g_opt_ampdu, g_opt_mcs, g_opt_bw40);
 	} else if (!strcmp(cmd, "usbstat")) {
 		char res[300];
 		extern void kc_usb_stats(char *, size_t);

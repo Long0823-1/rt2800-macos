@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 // 802.11 data frame construction (Ethernet -> QoS data + CCMP header + LLC/SNAP) and key installation towards the driver.
+#include <stdlib.h>
 #include "mm.h"
 #include "mlme.h"
 #include "datapath.h"
@@ -53,6 +54,17 @@ void dp_remove_keys(void)
 /* Build and transmit one data frame from <sa> to <da> (STA -> AP direction, ToDS). */
 extern int kc_usb_tx_backlog(void);
 
+/* runtime tuning knobs (daemon command `tune <name> <value>`, initial values from RT_BA / RT_AMPDU / RT_MCS / RT_BW40) */
+int g_opt_ba = -1, g_opt_ampdu = -1, g_opt_mcs = -2, g_opt_bw40 = -1;
+static void opt_init(void)
+{
+	if (g_opt_ba < 0) g_opt_ba = getenv("RT_BA") != NULL;
+	if (g_opt_ampdu < 0) g_opt_ampdu = getenv("RT_AMPDU") != NULL;
+	if (g_opt_mcs == -2) g_opt_mcs = getenv("RT_MCS") ? atoi(getenv("RT_MCS")) : -1;	/* -1 = legacy 6 Mbit/s */
+	if (g_opt_bw40 < 0) g_opt_bw40 = getenv("RT_BW40") != NULL;
+}
+int dp_opt(int *which) { opt_init(); return *which; }
+
 int dp_tx_frame(const u8 *da, u16 ethertype, const u8 *payload, size_t len, bool control_port)
 {
 	/* back-pressure: do not let the chip's TX path be flooded (the kernel path throttles through txq/ieee80211_stop_queues) */
@@ -93,9 +105,15 @@ int dp_tx_frame(const u8 *da, u16 ethertype, const u8 *payload, size_t len, bool
 	info->band = g_mlme.chan->band;
 	info->control.vif = m->vif;
 	if (prot) info->control.hw_key = dp_ptk;
-	info->control.rates[0].idx = 0; info->control.rates[0].count = 4; info->control.rates[1].idx = -1;	/* no rate control: lowest legacy rate, a few tries */
+	/* no rate control: a fixed rate, legacy 6 Mbit/s unless an HT MCS was selected with `tune mcs N` (EAPOL keeps the lowest rate) */
+	info->control.rates[0].idx = 0; info->control.rates[0].count = 4; info->control.rates[1].idx = -1;
+	if (!control_port && g_opt_mcs >= 0 && g_opt_mcs <= 15) {
+		info->control.rates[0].idx = g_opt_mcs;
+		info->control.rates[0].flags = IEEE80211_TX_RC_MCS | (g_opt_bw40 ? IEEE80211_TX_RC_40_MHZ_WIDTH : 0);
+	}
 	/* A-MPDU off: with the BA session up, unicast data sent as A-MPDU never got a reply on rt2800 (DHCP before the session did) */
-	if (!control_port && mlme_tx_ba_ready(0) && getenv("RT_AMPDU")) info->flags |= IEEE80211_TX_CTL_AMPDU;
+	opt_init();
+	if (!control_port && mlme_tx_ba_ready(0) && g_opt_ampdu) info->flags |= IEEE80211_TX_CTL_AMPDU;
 	if (control_port) {
 		info->flags |= IEEE80211_TX_CTL_REQ_TX_STATUS | IEEE80211_TX_CTL_USE_MINRATE;
 		info->control.flags |= IEEE80211_TX_CTRL_PORT_CTRL_PROTO;
