@@ -30,8 +30,34 @@ void ieee80211_get_tx_rates(struct ieee80211_vif *vif, struct ieee80211_sta *sta
 }
 
 void ieee80211_send_bar(struct ieee80211_vif *vif, u8 *ra, u16 tid, u16 ssn) {}
-void ieee80211_stop_queue(struct ieee80211_hw *hw, int queue) {}
-void ieee80211_wake_queue(struct ieee80211_hw *hw, int queue) {}
+/* TX flow control: rt2x00 drops frames silently when its queue is full and tells the stack to stop with stop_queue();
+ * wake_queue() comes from the TX-done path.  The sender (dp_tx_frame, called from the utun reader) waits here meanwhile,
+ * which stops reading the utun and pushes back on macOS's TCP instead of losing packets. */
+static pthread_mutex_t txq_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t txq_cond = PTHREAD_COND_INITIALIZER;
+static unsigned txq_stopped;
+unsigned long g_txq_waits, g_txq_wait_ms;
+void ieee80211_stop_queue(struct ieee80211_hw *hw, int queue)
+{
+	pthread_mutex_lock(&txq_lock); txq_stopped |= 1u << (queue & 31); pthread_mutex_unlock(&txq_lock);
+}
+void ieee80211_wake_queue(struct ieee80211_hw *hw, int queue)
+{
+	pthread_mutex_lock(&txq_lock); txq_stopped &= ~(1u << (queue & 31)); pthread_cond_broadcast(&txq_cond); pthread_mutex_unlock(&txq_lock);
+}
+void mm_wait_tx_queue(void)
+{
+	struct timespec t0, ts;
+	pthread_mutex_lock(&txq_lock);
+	if (txq_stopped) {
+		clock_gettime(CLOCK_REALTIME, &t0);
+		ts = t0; ts.tv_nsec += 100000000L; if (ts.tv_nsec >= 1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }	/* never wait longer than 100 ms */
+		while (txq_stopped && pthread_cond_timedwait(&txq_cond, &txq_lock, &ts) == 0) ;
+		clock_gettime(CLOCK_REALTIME, &ts);
+		g_txq_waits++; g_txq_wait_ms += (ts.tv_sec - t0.tv_sec) * 1000 + (ts.tv_nsec - t0.tv_nsec) / 1000000;
+	}
+	pthread_mutex_unlock(&txq_lock);
+}
 void ieee80211_handle_wake_tx_queue(struct ieee80211_hw *hw, struct ieee80211_txq *txq) {}
 void mt7601u_init_debugfs(void *dev) {}
 

@@ -454,7 +454,7 @@ static void handle_cmd(char *line, FILE *out)
 		char res[300];
 		extern void kc_usb_stats(char *, size_t);
 		kc_usb_stats(res, sizeof res);
-		{ extern unsigned long g_tx_acked, g_tx_noack; fprintf(out, "%s | TX acked %lu no-ack %lu\n", res, g_tx_acked, g_tx_noack); }
+		{ extern unsigned long g_tx_acked, g_tx_noack, g_txq_waits, g_txq_wait_ms; fprintf(out, "%s | TX acked %lu no-ack %lu | TX queue stalls %lu (%lu ms)\n", res, g_tx_acked, g_tx_noack, g_txq_waits, g_txq_wait_ms); }
 	} else if (!strcmp(cmd, "quit")) {
 		fprintf(out, "ok\n"); fflush(out);
 		net_down();

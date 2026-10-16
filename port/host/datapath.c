@@ -71,6 +71,7 @@ int dp_tx_frame(const u8 *da, u16 ethertype, const u8 *payload, size_t len, bool
 	if (!control_port) {
 		for (int i = 0; i < 400 && kc_usb_tx_backlog() > 96; i++) usleep(500);
 	}
+	{ extern void mm_wait_tx_queue(void); mm_wait_tx_queue(); }	/* back-pressure while the driver's TX queue is full */
 	struct mm *m = g_mm;
 	struct ieee80211_hw *hw = &m->hw;
 	bool prot = !control_port && dp_ptk;
