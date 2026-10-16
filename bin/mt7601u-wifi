@@ -1,0 +1,56 @@
+#!/bin/bash
+# Launcher for the mt7601ud daemon (MT7601U USB Wi-Fi). Talks to the daemon's control socket.
+SOCK=/var/run/mt7601ud.sock
+# messages follow the system language: Japanese when the first preferred language (or LANG) is ja, English otherwise
+case "${MT7601U_LANG:-$(defaults read -g AppleLanguages 2>/dev/null | sed -n 2p | tr -d ' ",')}" in ja*) JA=1;; *) case "$LANG" in ja*) JA=1;; *) JA=0;; esac;; esac
+m() { if [ "$JA" = 1 ]; then echo "$1"; else echo "$2"; fi; }
+need_root() { [ "$(id -u)" = 0 ] || exec sudo "$0" "$@"; }
+hex() { printf %s "$1" | xxd -p | tr -d '\n'; }
+ctl() { echo "$*" | nc -U -w 3 "$SOCK" 2>/dev/null || { m "デーモンが動いていません (試す: $0 start)" "daemon not running (try: $0 start)" >&2; return 1; }; }
+usage() {
+  if [ "$JA" = 1 ]; then cat <<U
+使い方: mt7601u-wifi <コマンド>
+  status                 現在の状態 / SSID / IP (JSON)
+  scan                   再スキャンして一覧を表示
+  list                   前回のスキャンで見えたネットワーク
+  connect <ssid> [-o]    接続 (パスワードを聞きます。-o = パスワードなし)。保存されて自動接続されます
+  disconnect             切断して自動接続を止める
+  forget <ssid>          保存したネットワークを削除
+  start | stop | restart デーモンを操作
+  log                    /var/log/mt7601ud.log を表示し続ける
+U
+  else cat <<U
+usage: mt7601u-wifi <command>
+  status                 current state / SSID / IP (JSON)
+  scan                   rescan, then list
+  list                   networks seen in the last scan
+  connect <ssid> [-o]    join (asks for the password; -o = open network); remembered for auto-connect
+  disconnect             leave the network and stop auto-connect
+  forget <ssid>          delete a saved network
+  start | stop | restart control the background daemon
+  log                    follow /var/log/mt7601ud.log
+U
+  fi
+}
+cmd="$1"; shift
+case "$cmd" in
+  status|list) need_root "$cmd" "$@"; ctl "$cmd" ;;
+  scan) need_root scan; ctl scan >/dev/null; sleep 4; ctl list ;;
+  connect)
+    need_root connect "$@"
+    ssid="$1"; [ -n "$ssid" ] || { usage; exit 1; }
+    if [ "$2" = "-o" ]; then ctl connect "$(hex "$ssid")" -
+    else
+      if [ -n "$MT7601U_PSK" ]; then psk="$MT7601U_PSK"; else read -rsp "$(m "「$ssid」のパスワード: " "Password for \"$ssid\": ")" psk </dev/tty; echo; fi
+      ctl connect "$(hex "$ssid")" "$(hex "$psk")"
+    fi
+    for i in $(seq 1 30); do sleep 1; s=$(ctl status); case "$s" in *'"state":"connected"'*|*'"state":"failed"'*) break;; esac; done
+    echo "$s" ;;
+  disconnect) need_root disconnect; ctl disconnect ;;
+  forget) need_root forget "$@"; ctl forget "$(hex "$1")" ;;
+  start) need_root start; launchctl bootstrap system /Library/LaunchDaemons/local.mt7601ud.plist 2>/dev/null; launchctl kickstart system/local.mt7601ud ;;
+  stop) need_root stop; launchctl bootout system /Library/LaunchDaemons/local.mt7601ud.plist ;;
+  restart) need_root restart; launchctl kickstart -k system/local.mt7601ud ;;
+  log) tail -f /var/log/mt7601ud.log ;;
+  *) usage; exit 1 ;;
+esac
