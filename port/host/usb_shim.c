@@ -149,6 +149,7 @@ static void out_drain(unsigned char ep)	/* caller holds g_submit_lock */
 	}
 }
 
+unsigned long usb_ctl_n, usb_ctl_ns, usb_ctl_max;	/* control transfers: count, total and worst latency (ns) */
 int usb_submit_urb(struct urb *urb, gfp_t gfp)
 {
 	u8 ep = usb_pipeendpoint(urb->pipe);
@@ -158,7 +159,9 @@ int usb_submit_urb(struct urb *urb, gfp_t gfp)
 		const u8 *sp = urb->setup_packet;
 		IOUSBDevRequest rq = { .bmRequestType = sp[0], .bRequest = sp[1], .wValue = sp[2] | sp[3] << 8, .wIndex = sp[4] | sp[5] << 8,
 				       .wLength = urb->transfer_buffer_length, .pData = urb->transfer_buffer };
+		u64 t0 = kc_now_ns();
 		IOReturn cr = (*g_dev)->DeviceRequest(g_dev, &rq);
+		{ u64 d = kc_now_ns() - t0; __atomic_add_fetch(&usb_ctl_n, 1, __ATOMIC_RELAXED); __atomic_add_fetch(&usb_ctl_ns, d, __ATOMIC_RELAXED); if (d > usb_ctl_max) usb_ctl_max = d; }
 		urb->status = cr ? map_status(cr) : 0;
 		urb->actual_length = cr ? 0 : rq.wLenDone;
 		usb_unanchor_urb(urb);	/* like urb_done(): the caller may free the URB right after submit returns */
@@ -509,8 +512,9 @@ void kc_usb_stats(char *buf, size_t n)
 	for (int e = 0; e < 16; e++) { struct list_head *p; if (out_q_init) list_for_each(p, &out_q[e]) qlen[e]++; tot += qlen[e]; }
 	int infl = 0; for (int e = 0; e < 16; e++) infl += out_inflight[e];
 	pthread_mutex_unlock(&g_submit_lock);
-	snprintf(buf, n, "IN submitted %lu completed %lu (outstanding %ld) | OUT submitted %lu completed %lu | OUT inflight %d queued %d | errors %lu",
-		 usb_st_in_sub, usb_st_in_done, (long)(usb_st_in_sub - usb_st_in_done), usb_st_out_sub, usb_st_out_done, infl, tot, usb_st_err);
+	snprintf(buf, n, "IN submitted %lu completed %lu (outstanding %ld) | OUT submitted %lu completed %lu | OUT inflight %d queued %d | errors %lu | async ctl %lu avg %lu us max %lu us",
+		 usb_st_in_sub, usb_st_in_done, (long)(usb_st_in_sub - usb_st_in_done), usb_st_out_sub, usb_st_out_done, infl, tot, usb_st_err,
+		 usb_ctl_n, usb_ctl_n ? usb_ctl_ns / usb_ctl_n / 1000 : 0, usb_ctl_max / 1000);
 }
 
 /* Number of OUT transfers that are queued or in flight on the data endpoints (for TX back-pressure). */
