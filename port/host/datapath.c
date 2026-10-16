@@ -59,7 +59,7 @@ extern int kc_usb_tx_backlog(void);
 int g_opt_ba = -1, g_opt_ampdu = -1, g_opt_mcs = -2, g_opt_bw40 = -1;
 static void opt_init(void)
 {
-	if (g_opt_ba < 0) g_opt_ba = getenv("RT_BA") ? atoi(getenv("RT_BA")) : 0;	/* bit0 = accept RX BA, bit1 = start TX BA (RT_BA=1 means RX only) */
+	if (g_opt_ba < 0) g_opt_ba = getenv("RT_BA") ? atoi(getenv("RT_BA")) : 1;	/* bit0 = accept RX BA (default: ~4x download speed), bit1 = start TX BA */
 	if (g_opt_ampdu < 0) g_opt_ampdu = getenv("RT_AMPDU") != NULL;
 	if (g_opt_mcs == -2) g_opt_mcs = getenv("RT_MCS") ? atoi(getenv("RT_MCS")) : 5;	/* -1 = legacy 6 Mbit/s; default HT MCS5 (20 MHz) with automatic fallback */
 	if (g_opt_bw40 < 0) g_opt_bw40 = getenv("RT_BW40") != NULL;
