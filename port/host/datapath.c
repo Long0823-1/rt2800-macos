@@ -62,7 +62,7 @@ static void opt_init(void)
 	if (g_opt_ba < 0) g_opt_ba = getenv("RT_BA") ? atoi(getenv("RT_BA")) : 1;	/* bit0 = accept RX BA (default: ~4x download speed), bit1 = start TX BA */
 	if (g_opt_ampdu < 0) g_opt_ampdu = getenv("RT_AMPDU") != NULL;
 	if (g_opt_mcs == -2) g_opt_mcs = getenv("RT_MCS") ? atoi(getenv("RT_MCS")) : 5;	/* -1 = legacy 6 Mbit/s; default HT MCS5 (20 MHz) with automatic fallback */
-	if (g_opt_bw40 < 0) g_opt_bw40 = getenv("RT_BW40") != NULL;
+	if (g_opt_bw40 < 0) g_opt_bw40 = getenv("RT_BW40") ? atoi(getenv("RT_BW40")) : 1;	/* 40 MHz TX (the BSS is 40 MHz): download 55 -> 80, upload 23 -> 27 Mbit/s */
 }
 int dp_opt(int *which) { opt_init(); return *which; }
 
