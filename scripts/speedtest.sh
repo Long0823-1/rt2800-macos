@@ -1,12 +1,13 @@
 #!/bin/bash
 # Compares TX/RX tuning settings of the running rt2800d daemon: download and upload through its utun interface.
-# usage: sudo scripts/speedtest.sh [ssid]        (default SSID: YOUR_SSID; the network must already be saved)
+# usage: sudo scripts/speedtest.sh [ssid]        (default: the network the daemon is connected to; it must already be saved)
+. "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 SOCK=/var/run/rt2800d.sock
-SSID="${1:-YOUR_SSID}"
+SSID="${1:-$(cur_ssid)}"
 [ "$(id -u)" = 0 ] || exec sudo "$0" "$@"
 ctl() { echo "$*" | nc -U -w 4 "$SOCK" 2>/dev/null; }
 hex() { printf %s "$1" | xxd -p | tr -d '\n'; }
-UTUN=$(ifconfig | awk '/^utun[0-9]+:/{n=$1} /inet 192.168.0.2/{print n}' | tr -d ':')
+UTUN=$(find_utun)
 status_state() { ctl status | sed -n 's/.*"state":"\([a-z]*\)".*/\1/p'; }
 reconnect() {
   ctl disconnect >/dev/null; sleep 8
@@ -18,7 +19,7 @@ reconnect() {
     [ $((i % 20)) = 0 ] && ctl use "$(hex "$SSID")" >/dev/null
   done
   sleep 8
-  UTUN=$(ifconfig | awk '/^utun[0-9]+:/{n=$1} /inet 192.168.0.2/{print n}' | tr -d ':')
+  UTUN=$(find_utun)
 }
 IP=$(dig +short speed.cloudflare.com | head -1)
 [ -n "$IP" ] || { echo "dns failed"; exit 1; }

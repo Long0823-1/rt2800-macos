@@ -1,9 +1,10 @@
 #!/bin/bash
 # Samples the running rt2800d during a download to see where its threads spend their time (output: /tmp/rt-sample.txt).
 # usage: sudo scripts/profile.sh
+. "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 [ "$(id -u)" = 0 ] || exec sudo "$0" "$@"
 USER_NAME="${SUDO_USER:-$(stat -f %Su /dev/console)}"
-UTUN=$(ifconfig | awk '/^utun[0-9]+:/{n=$1} /inet 192.168.0.2/{print n}' | tr -d ':')
+UTUN=$(find_utun)
 [ -n "$UTUN" ] || { echo "utun not found (connected?)"; exit 1; }
 PID=$(pgrep -x rt2800d | head -1); [ -n "$PID" ] || { echo "rt2800d not running"; exit 1; }
 IP=$(dig +short speed.cloudflare.com | head -1)

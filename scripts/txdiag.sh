@@ -1,8 +1,9 @@
 #!/bin/bash
 # Compares the TX ACK success rate of legacy 6 Mbit/s and HT MCS7 (20 MHz) while running the speed test.
 # usage: sudo scripts/txdiag.sh [ssid]
+. "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 SOCK=/var/run/rt2800d.sock
-SSID="${1:-YOUR_SSID}"
+SSID="${1:-$(cur_ssid)}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 [ "$(id -u)" = 0 ] || exec sudo "$0" "$@"
 ctl() { echo "$*" | nc -U -w 4 "$SOCK" 2>/dev/null; }

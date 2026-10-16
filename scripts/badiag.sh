@@ -1,8 +1,9 @@
 #!/bin/bash
 # Records what the AP sends during a download with Block Ack enabled (or disabled): per-frame debug lines go to /tmp/rt-ba-<mode>.log
 # usage: sudo scripts/badiag.sh <ba: 0|1|3> [ssid]
+. "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 SOCK=/var/run/rt2800d.sock
-BA="${1:-1}"; SSID="${2:-YOUR_SSID}"
+BA="${1:-1}"; SSID="${2:-$(cur_ssid)}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 [ "$(id -u)" = 0 ] || exec sudo "$0" "$@"
 USER_NAME="${SUDO_USER:-$(stat -f %Su /dev/console)}"
@@ -13,7 +14,7 @@ ctl tune ba "$BA" >/dev/null; ctl tune ampdu 0 >/dev/null; ctl tune mcs -1 >/dev
 ctl disconnect >/dev/null; sleep 8; ctl use "$(hex "$SSID")" >/dev/null
 for i in $(seq 1 90); do sleep 1; [ "$(state)" = connected ] && break; [ $((i % 20)) = 0 ] && ctl use "$(hex "$SSID")" >/dev/null; done
 sleep 8
-UTUN=$(ifconfig | awk '/^utun[0-9]+:/{n=$1} /inet 192.168.0.2/{print n}' | tr -d ':')
+UTUN=$(find_utun)
 IP=$(dig +short speed.cloudflare.com | head -1)
 route add -host "$IP" -interface "$UTUN" >/dev/null 2>&1
 LOG=/var/log/rt2800d.log; START=$(wc -l < $LOG)

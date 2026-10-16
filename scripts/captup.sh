@@ -1,9 +1,10 @@
 #!/bin/bash
 # Captures a 6 MB upload through the rt2800d utun interface with tcpdump (file: /tmp/rt-up.pcap, readable by the invoking user).
 # usage: sudo scripts/captup.sh [down]     (default: upload; `down` captures a 25 MB download into /tmp/rt-down.pcap)
+. "$(cd "$(dirname "$0")" && pwd)/lib.sh"
 [ "$(id -u)" = 0 ] || exec sudo "$0" "$@"
 USER_NAME="${SUDO_USER:-$(stat -f %Su /dev/console)}"
-UTUN=$(ifconfig | awk '/^utun[0-9]+:/{n=$1} /inet 192.168.0.2/{print n}' | tr -d ':')
+UTUN=$(find_utun)
 [ -n "$UTUN" ] || { echo "utun not found (connected?)"; exit 1; }
 IP=$(dig +short speed.cloudflare.com | head -1)
 head -c 6000000 /dev/zero > /tmp/rt2800-up.bin
