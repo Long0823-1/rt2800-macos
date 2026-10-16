@@ -4,6 +4,7 @@
 #include "mm.h"
 #include "mlme.h"
 extern unsigned long st_rx_frames, st_rx_data, st_rx_bytes, st_rx_undecrypted, st_rx_undec_group, st_rx_undec_uni;
+extern unsigned long st_rx_retry, st_rx_dup, st_rx_amsdu, st_rx_ooo;
 static void handle_action(struct sk_buff *skb);
 void mlme_ba_start_tx(int tid);
 void mlme_ba_reset(void);
@@ -703,12 +704,15 @@ static void handle_data(struct sk_buff *skb)
 		static u16 last_seq[17] = { [0 ... 16] = 0xffff };
 		unsigned tid = ieee80211_is_data_qos(fc) ? (le16_to_cpu(*(__le16 *)ieee80211_get_qos_ctl(h)) & 0xf) : 16;
 		u16 seq = le16_to_cpu(h->seq_ctrl) >> 4;
-		if (!is_multicast_ether_addr(h->addr1) && ieee80211_has_retry(fc) && last_seq[tid] == seq) return;
+		if (ieee80211_has_retry(fc)) st_rx_retry++;
+		if (!is_multicast_ether_addr(h->addr1) && ieee80211_has_retry(fc) && last_seq[tid] == seq) { st_rx_dup++; return; }
+		if (!is_multicast_ether_addr(h->addr1) && last_seq[tid] != 0xffff && (u16)((seq - last_seq[tid]) & 0xfff) > 0x800) st_rx_ooo++;
 		last_seq[tid] = seq;
 	}
 	st_rx_data++; st_rx_bytes += skb->len;
 	const u8 *da = h->addr1, *sa = h->addr3;
 	if (amsdu) {
+		st_rx_amsdu++;
 		while (plen >= 14) {
 			u16 l = (payload[12] << 8) | payload[13];
 			if (14 + l > plen) break;
@@ -1126,6 +1130,7 @@ void mlme_rx_rate_str(char *buf, size_t n)
 
 /* ---- counters ---- */
 unsigned long st_rx_frames, st_rx_data, st_rx_bytes, st_rx_undecrypted, st_rx_nodecrypt_drop, st_rx_undec_group, st_rx_undec_uni;
+unsigned long st_rx_retry, st_rx_dup, st_rx_amsdu, st_rx_ooo;	/* retry-flagged frames, retries dropped as duplicates, A-MSDU frames, sequence numbers going backwards */
 
 /* ---------------- Block Ack (A-MPDU) ---------------- */
 static bool tx_ba_pending[16], tx_ba_ready_[16];

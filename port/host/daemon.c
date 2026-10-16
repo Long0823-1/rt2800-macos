@@ -22,6 +22,7 @@ extern int kc_usb_modeswitch(void);
 extern unsigned long net_wr_err;
 extern unsigned long st_rx_undec_group, st_rx_undec_uni;
 extern unsigned long st_rx_frames, st_rx_data, st_rx_bytes, st_rx_undecrypted;
+extern unsigned long st_rx_retry, st_rx_dup, st_rx_amsdu, st_rx_ooo;
 enum dstate { D_STARTING, D_NO_ADAPTER, D_IDLE, D_SCANNING, D_CONNECTING, D_CONNECTED, D_FAILED };
 static const char *dstate_name[] = { "starting", "no_adapter", "idle", "scanning", "connecting", "connected", "failed" };
 
@@ -192,7 +193,7 @@ static void cmd_status(FILE *f)
 	char rr[48]; mlme_rx_rate_str(rr, sizeof rr);
 	fprintf(f, ",\"rx_rate\":\"%s\",\"width\":%u", rr, g_mlme.width == NL80211_CHAN_WIDTH_80 ? 80 : g_mlme.width == NL80211_CHAN_WIDTH_40 ? 40 : 20);
 	fprintf(f, ",\"sys\":%d,\"dstart\":%ld", D.sys_assoc ? 1 : 0, (long)(time(NULL) - g_daemon_start));
-	fprintf(f, ",\"rx_frames\":%lu,\"rx_data\":%lu,\"rx_bytes\":%lu,\"rx_undecrypted\":%lu,\"rx_undec_group\":%lu,\"rx_undec_uni\":%lu,\"utun_wr_err\":%lu", st_rx_frames, st_rx_data, st_rx_bytes, st_rx_undecrypted, st_rx_undec_group, st_rx_undec_uni, net_wr_err);
+	fprintf(f, ",\"rx_frames\":%lu,\"rx_data\":%lu,\"rx_bytes\":%lu,\"rx_undecrypted\":%lu,\"rx_undec_group\":%lu,\"rx_undec_uni\":%lu,\"utun_wr_err\":%lu,\"rx_retry\":%lu,\"rx_dup\":%lu,\"rx_amsdu\":%lu,\"rx_ooo\":%lu", st_rx_frames, st_rx_data, st_rx_bytes, st_rx_undecrypted, st_rx_undec_group, st_rx_undec_uni, net_wr_err, st_rx_retry, st_rx_dup, st_rx_amsdu, st_rx_ooo);
 	fprintf(f, ",\"known\":[");
 	for (int i = 0; i < nknown; i++) { if (i) fputc(',', f); json_str(f, known[i].ssid); }
 	fprintf(f, "]}\n");
