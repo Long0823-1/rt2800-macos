@@ -1,5 +1,7 @@
+*.d
+*.o
+dist/
+installer/build/
+menubar/build/
 port/build/
 port/rt2800d
-*.o
-*.d
-menubar/build/

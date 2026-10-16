@@ -1,0 +1,7 @@
+#!/bin/bash
+# stop an older copy before the files are replaced
+launchctl bootout system /Library/LaunchDaemons/local.rt2800d.plist 2>/dev/null
+USER_NAME="$(stat -f %Su /dev/console)"
+[ -n "$USER_NAME" ] && launchctl bootout "gui/$(id -u "$USER_NAME")/local.rt2800.wifi" 2>/dev/null
+pkill -x RT2800WiFi 2>/dev/null
+exit 0

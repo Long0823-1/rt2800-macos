@@ -1,0 +1,32 @@
+#!/bin/bash
+# Runs as root at the end of the installation.
+PLIST=/Library/LaunchDaemons/local.rt2800d.plist
+chown root:wheel "$PLIST"
+chmod 644 "$PLIST"
+chmod 755 /usr/local/libexec/rt2800/rt2800d /usr/local/bin/rt2800-wifi /usr/local/libexec/rt2800/uninstall.sh
+mkdir -p /var/db/rt2800d
+launchctl bootout system "$PLIST" 2>/dev/null
+launchctl bootstrap system "$PLIST"
+# menu bar app: start it for the logged-in user now and at every login (a per-user LaunchAgent the app can switch off itself)
+USER_NAME="$(stat -f %Su /dev/console)"
+if [ -n "$USER_NAME" ] && [ "$USER_NAME" != "root" ]; then
+  UHOME="$(dscl . -read "/Users/$USER_NAME" NFSHomeDirectory | awk '{print $2}')"
+  AGENT="$UHOME/Library/LaunchAgents/local.rt2800.wifi.plist"
+  mkdir -p "$UHOME/Library/LaunchAgents"
+  cat > "$AGENT" <<PLIST2
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>local.rt2800.wifi</string>
+  <key>ProgramArguments</key><array><string>/Applications/RT2800 Wi-Fi.app/Contents/MacOS/RT2800WiFi</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><false/>
+  <key>ProcessType</key><string>Interactive</string>
+</dict></plist>
+PLIST2
+  chown "$USER_NAME" "$AGENT"
+  UID_N="$(id -u "$USER_NAME")"
+  launchctl bootout "gui/$UID_N/local.rt2800.wifi" 2>/dev/null
+  launchctl bootstrap "gui/$UID_N" "$AGENT" 2>/dev/null
+fi
+exit 0

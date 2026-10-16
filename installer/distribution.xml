@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+  <title>RT2800 Wi-Fi</title>
+  <welcome file="welcome.html"/>
+  <license file="license.txt"/>
+  <conclusion file="conclusion.html"/>
+  <options customize="never" require-scripts="false" hostArchitectures="x86_64"/>
+  <domains enable_localSystem="true"/>
+  <choices-outline><line choice="default"><line choice="local.rt2800.pkg"/></line></choices-outline>
+  <choice id="default"/>
+  <choice id="local.rt2800.pkg" visible="false"><pkg-ref id="local.rt2800.pkg"/></choice>
+  <pkg-ref id="local.rt2800.pkg" version="0.1" onConclusion="none">component.pkg</pkg-ref>
+</installer-gui-script>

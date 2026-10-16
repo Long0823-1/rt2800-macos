@@ -1,5 +1,7 @@
 #!/bin/bash
 # Launcher for the rt2800d daemon (RT5592 USB Wi-Fi (Buffalo)). Talks to the daemon's control socket.
+# sudo drops the locale: without a UTF-8 locale bash mixes Japanese bytes into variable names ("$ssid」" became an empty variable)
+export LC_ALL=en_US.UTF-8
 SOCK=/var/run/rt2800d.sock
 # messages follow the system language: Japanese when the first preferred language (or LANG) is ja, English otherwise
 case "${RT2800_LANG:-$(defaults read -g AppleLanguages 2>/dev/null | sed -n 2p | tr -d ' ",')}" in ja*) JA=1;; *) case "$LANG" in ja*) JA=1;; *) JA=0;; esac;; esac
@@ -41,7 +43,7 @@ case "$cmd" in
     ssid="$1"; [ -n "$ssid" ] || { usage; exit 1; }
     if [ "$2" = "-o" ]; then ctl connect "$(hex "$ssid")" -
     else
-      if [ -n "$RT2800_PSK" ]; then psk="$RT2800_PSK"; else read -rsp "$(m "「$ssid」のパスワード: " "Password for \"$ssid\": ")" psk </dev/tty; echo; fi
+      if [ -n "$RT2800_PSK" ]; then psk="$RT2800_PSK"; else read -rsp "$(m "「${ssid}」のパスワード: " "Password for \"$ssid\": ")" psk </dev/tty; echo; fi
       ctl connect "$(hex "$ssid")" "$(hex "$psk")"
     fi
     for i in $(seq 1 30); do sleep 1; s=$(ctl status); case "$s" in *'"state":"connected"'*|*'"state":"failed"'*) break;; esac; done
