@@ -477,6 +477,8 @@ void net_rx_eth(const unsigned char *eth, size_t len)
 		uint16_t op = (p[6] << 8) | p[7];
 		uint32_t spa, tpa;
 		memcpy(&spa, p + 14, 4); memcpy(&tpa, p + 24, 4);
+		{ extern int g_rx_debug; if (g_rx_debug) fprintf(stderr, "[arp] rx op %u spa %u.%u.%u.%u tpa %u.%u.%u.%u (ours %u.%u.%u.%u, have %d)\n", op, p[14], p[15], p[16], p[17], p[24], p[25], p[26], p[27],
+			cfg.ip & 0xff, (cfg.ip >> 8) & 0xff, (cfg.ip >> 16) & 0xff, cfg.ip >> 24, cfg.have); }
 		if (spa) arp_set(spa, p + 8);
 		if (op == 1 && cfg.have && tpa == cfg.ip)
 			arp_send(2, p + 8, cfg.ip, p + 8, spa);
