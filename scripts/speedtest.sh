@@ -38,6 +38,11 @@ run() {  # name ba ampdu mcs bw40
   measure
 }
 echo "interface: $UTUN  target: $IP  ssid: $SSID"
+if [ "$2" = one ]; then	# single configuration: speedtest.sh <ssid> one <ba> <ampdu> <mcs> <bw40>
+  run "custom" "${3:-0}" "${4:-0}" "${5:--1}" "${6:-0}"
+  ctl tune ba 0 >/dev/null; ctl tune ampdu 0 >/dev/null; ctl tune mcs -1 >/dev/null; ctl tune bw40 0 >/dev/null
+  rm -f /tmp/rt2800-up.bin; exit 0
+fi
 run "legacy 6M, no BA (current default)" 0 0 -1 0
 run "HT MCS7 20MHz, no BA"                0 0 7 0
 run "HT MCS7 40MHz, no BA"                0 0 7 1
