@@ -44,7 +44,7 @@ static struct {
 #define MAX_KNOWN 32
 static struct { char ssid[33]; char psk[65]; bool open; bool has_pmk; unsigned char pmk[32]; } known[MAX_KNOWN];
 static int nknown;
-static const char *known_path(void) { const char *e = getenv("RTW89_KNOWN"); return e ? e : "/var/db/mt7601ud/known.conf"; }
+static const char *known_path(void) { const char *e = getenv("RTW89_KNOWN"); return e ? e : "/var/db/rt2800d/known.conf"; }
 
 static void hex_enc(const char *in, size_t n, char *out) { for (size_t i = 0; i < n; i++) sprintf(out + 2 * i, "%02x", (unsigned char)in[i]); out[2 * n] = 0; }
 static int hex_dec(const char *in, char *out, size_t max)
@@ -301,7 +301,7 @@ int daemon_connect_request(const char *ssid, const char *psk, bool open, const u
 }
 
 /* the system has not asked for anything: join the strongest known network that is in range (used before login) */
-static const char *last_path(void) { return "/var/db/mt7601ud/last.conf"; }
+static const char *last_path(void) { return "/var/db/rt2800d/last.conf"; }
 static void last_save(const char *ssid, int chan) { FILE *f = fopen(last_path(), "w"); if (f) { chmod(last_path(), 0600); fprintf(f, "%s\n%d\n", ssid, chan); fclose(f); } }
 static bool last_load_ex(char *ssid, size_t n, int *chan)
 {
@@ -460,7 +460,7 @@ static void handle_cmd(char *line, FILE *out)
 
 static void *ctl_thread(void *arg)
 {
-	const char *path = getenv("RTW89_SOCK") ? getenv("RTW89_SOCK") : "/var/run/mt7601ud.sock";
+	const char *path = getenv("RTW89_SOCK") ? getenv("RTW89_SOCK") : "/var/run/rt2800d.sock";
 	int srv = socket(AF_UNIX, SOCK_STREAM, 0);
 	struct sockaddr_un sa = { .sun_family = AF_UNIX };
 	snprintf(sa.sun_path, sizeof sa.sun_path, "%s", path);

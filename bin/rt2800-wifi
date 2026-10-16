@@ -1,15 +1,15 @@
 #!/bin/bash
-# Launcher for the mt7601ud daemon (MT7601U USB Wi-Fi). Talks to the daemon's control socket.
-SOCK=/var/run/mt7601ud.sock
+# Launcher for the rt2800d daemon (RT5592 USB Wi-Fi (Buffalo)). Talks to the daemon's control socket.
+SOCK=/var/run/rt2800d.sock
 # messages follow the system language: Japanese when the first preferred language (or LANG) is ja, English otherwise
-case "${MT7601U_LANG:-$(defaults read -g AppleLanguages 2>/dev/null | sed -n 2p | tr -d ' ",')}" in ja*) JA=1;; *) case "$LANG" in ja*) JA=1;; *) JA=0;; esac;; esac
+case "${RT2800_LANG:-$(defaults read -g AppleLanguages 2>/dev/null | sed -n 2p | tr -d ' ",')}" in ja*) JA=1;; *) case "$LANG" in ja*) JA=1;; *) JA=0;; esac;; esac
 m() { if [ "$JA" = 1 ]; then echo "$1"; else echo "$2"; fi; }
 need_root() { [ "$(id -u)" = 0 ] || exec sudo "$0" "$@"; }
 hex() { printf %s "$1" | xxd -p | tr -d '\n'; }
 ctl() { echo "$*" | nc -U -w 3 "$SOCK" 2>/dev/null || { m "デーモンが動いていません (試す: $0 start)" "daemon not running (try: $0 start)" >&2; return 1; }; }
 usage() {
   if [ "$JA" = 1 ]; then cat <<U
-使い方: mt7601u-wifi <コマンド>
+使い方: rt2800-wifi <コマンド>
   status                 現在の状態 / SSID / IP (JSON)
   scan                   再スキャンして一覧を表示
   list                   前回のスキャンで見えたネットワーク
@@ -17,10 +17,10 @@ usage() {
   disconnect             切断して自動接続を止める
   forget <ssid>          保存したネットワークを削除
   start | stop | restart デーモンを操作
-  log                    /var/log/mt7601ud.log を表示し続ける
+  log                    /var/log/rt2800d.log を表示し続ける
 U
   else cat <<U
-usage: mt7601u-wifi <command>
+usage: rt2800-wifi <command>
   status                 current state / SSID / IP (JSON)
   scan                   rescan, then list
   list                   networks seen in the last scan
@@ -28,7 +28,7 @@ usage: mt7601u-wifi <command>
   disconnect             leave the network and stop auto-connect
   forget <ssid>          delete a saved network
   start | stop | restart control the background daemon
-  log                    follow /var/log/mt7601ud.log
+  log                    follow /var/log/rt2800d.log
 U
   fi
 }
@@ -41,16 +41,16 @@ case "$cmd" in
     ssid="$1"; [ -n "$ssid" ] || { usage; exit 1; }
     if [ "$2" = "-o" ]; then ctl connect "$(hex "$ssid")" -
     else
-      if [ -n "$MT7601U_PSK" ]; then psk="$MT7601U_PSK"; else read -rsp "$(m "「$ssid」のパスワード: " "Password for \"$ssid\": ")" psk </dev/tty; echo; fi
+      if [ -n "$RT2800_PSK" ]; then psk="$RT2800_PSK"; else read -rsp "$(m "「$ssid」のパスワード: " "Password for \"$ssid\": ")" psk </dev/tty; echo; fi
       ctl connect "$(hex "$ssid")" "$(hex "$psk")"
     fi
     for i in $(seq 1 30); do sleep 1; s=$(ctl status); case "$s" in *'"state":"connected"'*|*'"state":"failed"'*) break;; esac; done
     echo "$s" ;;
   disconnect) need_root disconnect; ctl disconnect ;;
   forget) need_root forget "$@"; ctl forget "$(hex "$1")" ;;
-  start) need_root start; launchctl bootstrap system /Library/LaunchDaemons/local.mt7601ud.plist 2>/dev/null; launchctl kickstart system/local.mt7601ud ;;
-  stop) need_root stop; launchctl bootout system /Library/LaunchDaemons/local.mt7601ud.plist ;;
-  restart) need_root restart; launchctl kickstart -k system/local.mt7601ud ;;
-  log) tail -f /var/log/mt7601ud.log ;;
+  start) need_root start; launchctl bootstrap system /Library/LaunchDaemons/local.rt2800d.plist 2>/dev/null; launchctl kickstart system/local.rt2800d ;;
+  stop) need_root stop; launchctl bootout system /Library/LaunchDaemons/local.rt2800d.plist ;;
+  restart) need_root restart; launchctl kickstart -k system/local.rt2800d ;;
+  log) tail -f /var/log/rt2800d.log ;;
   *) usage; exit 1 ;;
 esac
