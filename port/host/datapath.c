@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 // 802.11 data frame construction (Ethernet -> QoS data + CCMP header + LLC/SNAP) and key installation towards the driver.
+#include <time.h>
 #include <stdlib.h>
 #include "mm.h"
 #include "mlme.h"
@@ -60,7 +61,7 @@ static void opt_init(void)
 {
 	if (g_opt_ba < 0) g_opt_ba = getenv("RT_BA") ? atoi(getenv("RT_BA")) : 0;	/* bit0 = accept RX BA, bit1 = start TX BA (RT_BA=1 means RX only) */
 	if (g_opt_ampdu < 0) g_opt_ampdu = getenv("RT_AMPDU") != NULL;
-	if (g_opt_mcs == -2) g_opt_mcs = getenv("RT_MCS") ? atoi(getenv("RT_MCS")) : -1;	/* -1 = legacy 6 Mbit/s */
+	if (g_opt_mcs == -2) g_opt_mcs = getenv("RT_MCS") ? atoi(getenv("RT_MCS")) : 5;	/* -1 = legacy 6 Mbit/s; default HT MCS5 (20 MHz) with automatic fallback */
 	if (g_opt_bw40 < 0) g_opt_bw40 = getenv("RT_BW40") != NULL;
 }
 int dp_opt(int *which) { opt_init(); return *which; }
@@ -108,7 +109,16 @@ int dp_tx_frame(const u8 *da, u16 ethertype, const u8 *payload, size_t len, bool
 	if (prot) info->control.hw_key = dp_ptk;
 	/* no rate control: a fixed rate, legacy 6 Mbit/s unless an HT MCS was selected with `tune mcs N` (EAPOL keeps the lowest rate) */
 	info->control.rates[0].idx = 0; info->control.rates[0].count = 4; info->control.rates[1].idx = -1;
-	if (!control_port && g_opt_mcs >= 0 && g_opt_mcs <= 15) {
+	/* minimal rate control: if more than 8% of the last 128 data frames got no ACK, fall back to legacy 6 Mbit/s for 5 s, then try again */
+	static int rc_fallback; static time_t rc_resume; static unsigned rc_n; static unsigned long rc_a0, rc_n0;
+	if (!control_port && g_opt_mcs >= 0 && ++rc_n >= 128) {
+		extern unsigned long g_tx_acked, g_tx_noack;
+		unsigned long da = g_tx_acked - rc_a0, dn = g_tx_noack - rc_n0;
+		rc_n = 0; rc_a0 = g_tx_acked; rc_n0 = g_tx_noack;
+		if (!rc_fallback && da + dn >= 64 && dn * 100 > (da + dn) * 8) { rc_fallback = 1; rc_resume = time(NULL) + 5; fprintf(stderr, "[rate] %lu of %lu frames unacked: falling back to 6 Mbit/s\n", dn, da + dn); }
+	}
+	if (rc_fallback && time(NULL) >= rc_resume) rc_fallback = 0;
+	if (!control_port && g_opt_mcs >= 0 && g_opt_mcs <= 15 && !rc_fallback) {
 		info->control.rates[0].idx = g_opt_mcs;
 		info->control.rates[0].flags = IEEE80211_TX_RC_MCS | (g_opt_bw40 ? IEEE80211_TX_RC_40_MHZ_WIDTH : 0);
 	}
