@@ -699,6 +699,13 @@ static void handle_data(struct sk_buff *skb)
 			plen -= 8;
 		}
 	}
+	{	/* duplicate detection like mac80211: a retry with the same sequence number as the previous frame of this TID */
+		static u16 last_seq[17] = { [0 ... 16] = 0xffff };
+		unsigned tid = ieee80211_is_data_qos(fc) ? (le16_to_cpu(*(__le16 *)ieee80211_get_qos_ctl(h)) & 0xf) : 16;
+		u16 seq = le16_to_cpu(h->seq_ctrl) >> 4;
+		if (!is_multicast_ether_addr(h->addr1) && ieee80211_has_retry(fc) && last_seq[tid] == seq) return;
+		last_seq[tid] = seq;
+	}
 	st_rx_data++; st_rx_bytes += skb->len;
 	const u8 *da = h->addr1, *sa = h->addr3;
 	if (amsdu) {
@@ -863,7 +870,7 @@ void mlme_set_authorized(void)
 	mlme_ba_reset();
 	g_mlme.connected = true;
 	fprintf(stderr, "[mlme] CONNECTED (authorized)\n");
-	mlme_ba_start_tx(0);
+	if (getenv("RT_BA")) mlme_ba_start_tx(0);
 }
 
 static int mlme_connect_once(const char *ssid, const char *psk);
@@ -1213,7 +1220,8 @@ static void handle_action(struct sk_buff *skb)
 		bool amsdu = capab & IEEE80211_ADDBA_PARAM_AMSDU_MASK;
 		u16 maxbuf = g_mm->hw.max_rx_aggregation_subframes ? g_mm->hw.max_rx_aggregation_subframes : 64;
 		if (!buf || buf > maxbuf) buf = maxbuf;
-		if (tid > 7) { send_addba_resp(m->u.action.addba_req.dialog_token, tid, buf, timeout, false, WLAN_STATUS_REQUEST_DECLINED); return; }
+		/* hardware Block Ack replies are unreliable on this adapter: the AP kept retransmitting (3x duplicates), so refuse aggregation unless RT_BA is set */
+		if (tid > 7 || !getenv("RT_BA")) { send_addba_resp(m->u.action.addba_req.dialog_token, tid, buf, timeout, false, WLAN_STATUS_REQUEST_DECLINED); return; }
 		ampdu_op(IEEE80211_AMPDU_RX_START, tid, ssn, buf, timeout, amsdu);
 		send_addba_resp(m->u.action.addba_req.dialog_token, tid, buf, timeout, amsdu, 0);
 		fprintf(stderr, "[ba] RX aggregation started tid %u buf %u\n", tid, buf);
