@@ -90,7 +90,7 @@ static void *sw_scan_thread(void *arg)
 		m->hw.conf.chandef.chan = ch;
 		m->hw.conf.chandef.width = NL80211_CHAN_WIDTH_20_NOHT;
 		m->hw.conf.chandef.center_freq1 = ch->center_freq;
-		int cr = m->ops->config(&m->hw, -1, IEEE80211_CONF_CHANGE_CHANNEL);
+		int cr = (m->hw.conf.power_level = m->hw.conf.chandef.chan->max_power, m->ops->config(&m->hw, -1, IEEE80211_CONF_CHANGE_CHANNEL));
 		wiphy_unlock(wiphy);
 		if (getenv("RT_SCANDEBUG")) fprintf(stderr, "[scan] hop band %d hw_value %d freq %d -> %d\n", band, ch->hw_value, ch->center_freq, cr);
 		for (int pass = 0; pass < 2; pass++) {
@@ -114,7 +114,7 @@ static void *sw_scan_thread(void *arg)
 	if (m->chanctx) {
 		wiphy_lock(wiphy);
 		m->hw.conf.chandef = m->chanctx->def;
-		m->ops->config(&m->hw, -1, IEEE80211_CONF_CHANGE_CHANNEL);
+		(m->hw.conf.power_level = m->hw.conf.chandef.chan->max_power, m->ops->config(&m->hw, -1, IEEE80211_CONF_CHANGE_CHANNEL));
 		wiphy_unlock(wiphy);
 	}
 	if (m->ops->sw_scan_complete) { wiphy_lock(wiphy); m->ops->sw_scan_complete(&m->hw, m->vif); wiphy_unlock(wiphy); }

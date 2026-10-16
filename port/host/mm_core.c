@@ -245,18 +245,18 @@ int ieee80211_emulate_add_chanctx(struct ieee80211_hw *hw, struct ieee80211_chan
 {
 	hw->conf.radar_enabled = ctx->radar_enabled;
 	hw->conf.chandef = ctx->def;
-	return g_mm->ops->config(hw, -1, IEEE80211_CONF_CHANGE_CHANNEL);
+	return (hw->conf.power_level = hw->conf.chandef.chan->max_power, g_mm->ops->config(hw, -1, IEEE80211_CONF_CHANGE_CHANNEL));
 }
 void ieee80211_emulate_remove_chanctx(struct ieee80211_hw *hw, struct ieee80211_chanctx_conf *ctx) {}
 void ieee80211_emulate_change_chanctx(struct ieee80211_hw *hw, struct ieee80211_chanctx_conf *ctx, u32 changed)
 {
 	hw->conf.radar_enabled = ctx->radar_enabled;
 	hw->conf.chandef = ctx->def;
-	g_mm->ops->config(hw, -1, IEEE80211_CONF_CHANGE_CHANNEL);
+	(hw->conf.power_level = hw->conf.chandef.chan->max_power, g_mm->ops->config(hw, -1, IEEE80211_CONF_CHANGE_CHANNEL));
 }
 int ieee80211_emulate_switch_vif_chanctx(struct ieee80211_hw *hw, struct ieee80211_vif_chanctx_switch *vifs, int n_vifs, enum ieee80211_chanctx_switch_mode mode)
 {
-	if (n_vifs > 0) { hw->conf.chandef = vifs[0].new_ctx->def; g_mm->ops->config(hw, -1, IEEE80211_CONF_CHANGE_CHANNEL); }
+	if (n_vifs > 0) { hw->conf.chandef = vifs[0].new_ctx->def; (hw->conf.power_level = hw->conf.chandef.chan->max_power, g_mm->ops->config(hw, -1, IEEE80211_CONF_CHANGE_CHANNEL)); }
 	return 0;
 }
 
@@ -460,6 +460,7 @@ int mm_up(void)
 		hw->conf.chandef.width = NL80211_CHAN_WIDTH_20_NOHT;
 		hw->conf.chandef.center_freq1 = hw->conf.chandef.chan->center_freq;
 	}
+	hw->conf.power_level = hw->conf.chandef.chan->max_power;	/* 0 would make rt2x00 transmit at its minimum power */
 	hw->conf.flags &= ~IEEE80211_CONF_IDLE;
 	m->ops->config(hw, -1, IEEE80211_CONF_CHANGE_IDLE);
 	wiphy_unlock(wiphy);
