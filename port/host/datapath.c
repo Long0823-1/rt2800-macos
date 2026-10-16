@@ -77,7 +77,9 @@ int dp_tx_frame(const u8 *da, u16 ethertype, const u8 *payload, size_t len, bool
 	h->seq_ctrl = cpu_to_le16((seq++ & 0xfff) << 4);
 	h->qos_ctrl = cpu_to_le16(0);			/* TID 0, normal ack */
 	/* like mac80211: only leave IV room when the driver asks for it; otherwise (mt7601u) the hardware inserts IV and MIC itself */
-	if (prot && (dp_ptk->flags & (IEEE80211_KEY_FLAG_GENERATE_IV | IEEE80211_KEY_FLAG_PUT_IV_SPACE))) {
+	/* like mac80211: without GENERATE_IV the stack writes the CCMP header itself (rt2x00 hardware encrypts but does not make the IV);
+	 * with PUT_IV_SPACE room is left for the driver to fill */
+	if (prot && (!(dp_ptk->flags & IEEE80211_KEY_FLAG_GENERATE_IV) || (dp_ptk->flags & IEEE80211_KEY_FLAG_PUT_IV_SPACE))) {
 		u64 pn = atomic64_inc_return(&dp_ptk->tx_pn);
 		u8 *c = skb_put(skb, 8);
 		c[0] = pn; c[1] = pn >> 8; c[2] = 0; c[3] = 0x20 | (dp_ptk->keyidx << 6);
@@ -93,6 +95,7 @@ int dp_tx_frame(const u8 *da, u16 ethertype, const u8 *payload, size_t len, bool
 	info->band = g_mlme.chan->band;
 	info->control.vif = m->vif;
 	if (prot) info->control.hw_key = dp_ptk;
+	info->control.rates[0].idx = 0; info->control.rates[0].count = 4; info->control.rates[1].idx = -1;	/* no rate control: lowest legacy rate, a few tries */
 	if (!control_port && mlme_tx_ba_ready(0)) info->flags |= IEEE80211_TX_CTL_AMPDU;
 	if (control_port) {
 		info->flags |= IEEE80211_TX_CTL_REQ_TX_STATUS | IEEE80211_TX_CTL_USE_MINRATE;
