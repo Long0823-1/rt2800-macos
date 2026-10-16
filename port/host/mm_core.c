@@ -463,6 +463,10 @@ int mm_up(void)
 		hw->conf.chandef.center_freq1 = hw->conf.chandef.chan->center_freq;
 	}
 	hw->conf.power_level = hw->conf.chandef.chan->max_power;	/* 0 would make rt2x00 transmit at its minimum power */
+	/* mac80211 sets the retry limits at start-up; without this rt2800 keeps its initial 2 retries and drops ~1% of the frames at the radio */
+	hw->conf.short_frame_max_tx_count = 10;
+	hw->conf.long_frame_max_tx_count = 10;
+	m->ops->config(hw, -1, IEEE80211_CONF_CHANGE_RETRY_LIMITS);
 	hw->conf.flags &= ~IEEE80211_CONF_IDLE;
 	m->ops->config(hw, -1, IEEE80211_CONF_CHANGE_IDLE);
 	wiphy_unlock(wiphy);
