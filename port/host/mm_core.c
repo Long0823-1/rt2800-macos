@@ -374,10 +374,12 @@ void ieee80211_rx_napi(struct ieee80211_hw *hw, struct ieee80211_sta *sta, struc
 	pthread_mutex_unlock(&g_mm->rx_lock);
 }
 
+unsigned long g_tx_acked, g_tx_noack;	/* TX completions with / without an ACK, shown by the daemon's usbstat command */
 void ieee80211_tx_status_irqsafe(struct ieee80211_hw *hw, struct sk_buff *skb)
 {
 	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
 	bool acked = info->flags & IEEE80211_TX_STAT_ACK;
+	if (acked) __atomic_add_fetch(&g_tx_acked, 1, __ATOMIC_RELAXED); else __atomic_add_fetch(&g_tx_noack, 1, __ATOMIC_RELAXED);
 	mlme_tx_status(skb, acked);
 	kfree_skb(skb);
 }

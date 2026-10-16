@@ -443,7 +443,7 @@ static void handle_cmd(char *line, FILE *out)
 		char res[300];
 		extern void kc_usb_stats(char *, size_t);
 		kc_usb_stats(res, sizeof res);
-		fprintf(out, "%s\n", res);
+		{ extern unsigned long g_tx_acked, g_tx_noack; fprintf(out, "%s | TX acked %lu no-ack %lu\n", res, g_tx_acked, g_tx_noack); }
 	} else if (!strcmp(cmd, "quit")) {
 		fprintf(out, "ok\n"); fflush(out);
 		net_down();
