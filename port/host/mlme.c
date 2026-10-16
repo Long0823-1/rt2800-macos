@@ -754,7 +754,7 @@ void mlme_rx(struct sk_buff *skb)
 	fc = hdr->frame_control;
 	if (g_rx_debug && !ieee80211_is_beacon(fc) && !ieee80211_is_probe_resp(fc) && g_mlme.state >= MLME_AUTH && skb->len >= 24 && !memcmp(hdr->addr2, g_bssid, 6)) {
 		struct ieee80211_rx_status *rs = IEEE80211_SKB_RXCB(skb);
-		fprintf(stderr, "[rx] fc=0x%04x len=%u flag=0x%x:", le16_to_cpu(fc), skb->len, rs->flag);
+		fprintf(stderr, "[rx] fc=0x%04x len=%u flag=0x%x enc=%u mcs=%u bw=%u sig=%d seq=%u:", le16_to_cpu(fc), skb->len, rs->flag, rs->encoding, rs->rate_idx, rs->bw, rs->signal, skb->len >= 24 ? le16_to_cpu(hdr->seq_ctrl) >> 4 : 0);
 		for (unsigned i = 0; i < skb->len && i < 56; i++) fprintf(stderr, " %02x", skb->data[i]);
 		fprintf(stderr, "\n");
 	}
