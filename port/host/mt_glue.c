@@ -48,7 +48,7 @@ void ieee80211_iterate_interfaces(struct ieee80211_hw *hw, u32 iter_flags, void 
 extern int g_scan_only_chan;
 #define SCAN_DWELL_MS 90
 
-static int build_probe_req(u8 *buf, const u8 *sa, const u8 *ssid, int ssid_len, int chan)
+static int build_probe_req(u8 *buf, const u8 *sa, const u8 *ssid, int ssid_len, int chan, int band)
 {
 	static const u8 rates[] = { 0x82, 0x84, 0x8b, 0x96, 0x0c, 0x12, 0x18, 0x24 }, ext[] = { 0x30, 0x48, 0x60, 0x6c };
 	u8 *p = buf;
@@ -58,8 +58,13 @@ static int build_probe_req(u8 *buf, const u8 *sa, const u8 *ssid, int ssid_len, 
 	memset(p, 0xff, 6); p += 6;					/* BSSID */
 	*p++ = 0; *p++ = 0;						/* seq ctrl (filled by hardware) */
 	*p++ = 0; *p++ = ssid_len; memcpy(p, ssid, ssid_len); p += ssid_len;
-	*p++ = 1; *p++ = sizeof rates; memcpy(p, rates, sizeof rates); p += sizeof rates;
-	*p++ = 50; *p++ = sizeof ext; memcpy(p, ext, sizeof ext); p += sizeof ext;
+	if (band == NL80211_BAND_5GHZ) {	/* OFDM only */
+		static const u8 r5[] = { 0x8c, 0x12, 0x98, 0x24, 0xb0, 0x48, 0x60, 0x6c };
+		*p++ = 1; *p++ = sizeof r5; memcpy(p, r5, sizeof r5); p += sizeof r5;
+	} else {
+		*p++ = 1; *p++ = sizeof rates; memcpy(p, rates, sizeof rates); p += sizeof rates;
+		*p++ = 50; *p++ = sizeof ext; memcpy(p, ext, sizeof ext); p += sizeof ext;
+	}
 	*p++ = 3; *p++ = 1; *p++ = chan;				/* DS parameter set */
 	return p - buf;
 }
@@ -71,31 +76,39 @@ static void *sw_scan_thread(void *arg)
 	u8 ssid[33]; int ssid_len = 0;
 	if (arg) { ssid_len = strlen(arg); memcpy(ssid, arg, ssid_len); free(arg); }
 	if (m->ops->sw_scan_start) { wiphy_lock(wiphy); m->ops->sw_scan_start(&m->hw, m->vif, m->vif->addr); wiphy_unlock(wiphy); }
-	struct ieee80211_supported_band *sb = wiphy->bands[NL80211_BAND_2GHZ];
+	for (int band = NL80211_BAND_2GHZ; band <= NL80211_BAND_5GHZ; band++) {
+	struct ieee80211_supported_band *sb = wiphy->bands[band];
 	for (int i = 0; sb && i < sb->n_channels; i++) {
 		struct ieee80211_channel *ch = &sb->channels[i];
 		if (ch->flags & IEEE80211_CHAN_DISABLED) continue;
+		if (band == NL80211_BAND_5GHZ) {	/* rt2x00 also lists HT40 centre channels (38, 42, ...): not valid 20 MHz channels, and tuning to them dropped the adapter off USB */
+			int n = (ch->center_freq - 5000) / 5;
+			if (!(n >= 149 ? (n - 149) % 4 == 0 : n % 4 == 0)) continue;
+		}
 		if (g_scan_only_chan && ch->hw_value != g_scan_only_chan) continue;
 		wiphy_lock(wiphy);
 		m->hw.conf.chandef.chan = ch;
 		m->hw.conf.chandef.width = NL80211_CHAN_WIDTH_20_NOHT;
 		m->hw.conf.chandef.center_freq1 = ch->center_freq;
-		m->ops->config(&m->hw, -1, IEEE80211_CONF_CHANGE_CHANNEL);
+		int cr = m->ops->config(&m->hw, -1, IEEE80211_CONF_CHANGE_CHANNEL);
 		wiphy_unlock(wiphy);
+		if (getenv("RT_SCANDEBUG")) fprintf(stderr, "[scan] hop band %d hw_value %d freq %d -> %d\n", band, ch->hw_value, ch->center_freq, cr);
 		for (int pass = 0; pass < 2; pass++) {
+			if ((ch->flags & IEEE80211_CHAN_NO_IR) || (band == NL80211_BAND_5GHZ && getenv("RT_PASSIVE5"))) { usleep(SCAN_DWELL_MS * 1000 / 2); continue; }	/* passive channel: listen only */
 			struct sk_buff *skb = alloc_skb(384, GFP_KERNEL);
 			if (!skb) break;
 			skb_reserve(skb, 96);	/* room for the driver's TXWI/DMA headers */
-			int len = build_probe_req(skb_put(skb, 128), m->vif->addr, ssid, ssid_len, ch->hw_value);
+			int len = build_probe_req(skb_put(skb, 128), m->vif->addr, ssid, ssid_len, ch->hw_value, band);
 			skb_trim(skb, len);
 			struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
 			memset(info, 0, sizeof *info);
-			info->band = NL80211_BAND_2GHZ;
-			info->control.rates[0].idx = 0; info->control.rates[0].count = 2;
+			info->band = band;
+			info->control.rates[0].idx = (band == NL80211_BAND_2GHZ && getenv("RT_OFDM24")) ? 4 : 0; info->control.rates[0].count = 2;
 			info->control.rates[1].idx = -1;
 			mm_tx(skb, NULL);
 			usleep(SCAN_DWELL_MS * 1000 / 2);
 		}
+	}
 	}
 	/* back to the operating channel when associated, otherwise the radio stays on the last scanned channel and the link starves */
 	if (m->chanctx) {

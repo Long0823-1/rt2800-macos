@@ -76,5 +76,7 @@ int main(int argc, char **argv)
 		}
 	}
 	mm_down();
+	{ extern void kc_usb_disconnect(const struct usb_driver *); extern void kc_usb_close(void);
+	  kc_usb_disconnect(kc_usb_driver_ptr); kc_usb_close(); }	/* tear the driver down so the chip is left idle */
 	return 0;
 }

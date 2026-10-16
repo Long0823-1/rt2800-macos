@@ -161,6 +161,7 @@ int usb_submit_urb(struct urb *urb, gfp_t gfp)
 		IOReturn cr = (*g_dev)->DeviceRequest(g_dev, &rq);
 		urb->status = cr ? map_status(cr) : 0;
 		urb->actual_length = cr ? 0 : rq.wLenDone;
+		usb_unanchor_urb(urb);	/* like urb_done(): the caller may free the URB right after submit returns */
 		if (urb->complete) urb->complete(urb);
 		return 0;
 	}

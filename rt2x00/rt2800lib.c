@@ -11241,6 +11241,8 @@ static int rt2800_init_eeprom(struct rt2x00_dev *rt2x00dev)
 	    rt2x00_get_field16(eeprom, EEPROM_NIC_CONF0_TXPATH);
 	rt2x00dev->default_ant.rx_chain_num =
 	    rt2x00_get_field16(eeprom, EEPROM_NIC_CONF0_RXPATH);
+	/* macOS host: two TX chains on 5 GHz draw more than the USB port delivers and the adapter drops off the bus; one chain is stable */
+	if (!getenv("RT_TWO_TX")) rt2x00dev->default_ant.tx_chain_num = 1;
 
 	eeprom = rt2800_eeprom_read(rt2x00dev, EEPROM_NIC_CONF1);
 

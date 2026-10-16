@@ -250,6 +250,7 @@ void rt2x00lib_config(struct rt2x00_dev *rt2x00dev,
 		clear_bit(CONFIG_MONITORING, &rt2x00dev->flags);
 
 	rt2x00dev->curr_band = conf->chandef.chan->band;
+	if (getenv("RT_SCANDEBUG")) fprintf(stderr, "[cfg] flags %x freq %d hw %d\n", ieee80211_flags, conf->chandef.chan->center_freq, conf->chandef.chan->hw_value);
 	rt2x00dev->curr_freq = conf->chandef.chan->center_freq;
 	rt2x00dev->tx_power = conf->power_level;
 	rt2x00dev->short_retry = conf->short_frame_max_tx_count;
