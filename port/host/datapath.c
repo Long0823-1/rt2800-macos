@@ -76,7 +76,6 @@ int dp_tx_frame(const u8 *da, u16 ethertype, const u8 *payload, size_t len, bool
 	memcpy(h->addr3, da, 6);
 	h->seq_ctrl = cpu_to_le16((seq++ & 0xfff) << 4);
 	h->qos_ctrl = cpu_to_le16(0);			/* TID 0, normal ack */
-	/* like mac80211: only leave IV room when the driver asks for it; otherwise (mt7601u) the hardware inserts IV and MIC itself */
 	/* like mac80211: only leave IV room when the driver asks for it; otherwise (mt7601u, rt2x00) the hardware inserts IV and MIC itself */
 	if (prot && (dp_ptk->flags & (IEEE80211_KEY_FLAG_GENERATE_IV | IEEE80211_KEY_FLAG_PUT_IV_SPACE))) {
 		u64 pn = atomic64_inc_return(&dp_ptk->tx_pn);
