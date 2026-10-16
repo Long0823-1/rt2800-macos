@@ -46,9 +46,9 @@ fi
 run "legacy 6M, no BA (current default)" 0 0 -1 0
 run "HT MCS7 20MHz, no BA"                0 0 7 0
 run "HT MCS7 40MHz, no BA"                0 0 7 1
-run "BA + A-MPDU, legacy 6M"              1 1 -1 0
-run "BA + A-MPDU, MCS7 20MHz"             1 1 7 0
-run "BA + A-MPDU, MCS7 40MHz"             1 1 7 1
+run "BA(rx+tx) + A-MPDU, legacy 6M"      3 1 -1 0
+run "BA(rx+tx) + A-MPDU, MCS7 20MHz"     3 1 7 0
+run "BA(rx+tx) + A-MPDU, MCS7 40MHz"     3 1 7 1
 ctl tune ba 0 >/dev/null; ctl tune ampdu 0 >/dev/null; ctl tune mcs -1 >/dev/null; ctl tune bw40 0 >/dev/null
 echo "(settings reset to the defaults; runtime only, nothing is saved)"
 rm -f /tmp/rt2800-up.bin
