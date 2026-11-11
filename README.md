@@ -78,3 +78,9 @@ mac80211 / MLME / WPA2 の実装とあわせて動かします。メニューバ
 開発・保守活動をKo-fiで支援できます。
 
 [Ko-fiで支援する](https://ko-fi.com/long0823)
+
+## 関連記事
+
+ブログ「knowledge-storage.info」で関連する解説記事を公開しています。
+
+- [macOS(Hackintosh)で Buffalo WLP-U2-300D の USB Wi-Fi 子機(RT5592)を使えるようにした](https://knowledge-storage.info/2026/10/16/macos-hackintosh-buffalo-wlp-u2-300d-usb-wi-fi-rt5592/)
